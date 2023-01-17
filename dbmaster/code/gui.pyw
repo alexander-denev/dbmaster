@@ -20,7 +20,8 @@ def contentWindow(fileName):
     except: Values = [list(['null'] for _ in range(len(db.columns())+1))]
     table = sg.Table(headings=['PK'] + db.columns(), values=Values, auto_size_columns=False, col_widths=[len(str(Values[len(Values)-1][0]))+1]+list(max(db.arrangement[i][1]+1, len(i)) for i in db.arrangement), num_rows=30, hide_vertical_scroll=True, font=('Arial', 14), justification='center', enable_events=True, key='-table-')
     window = sg.Window('DBMaster: '+db.fileName, use_default_focus = False, layout=[
-        [sg.Menu([['File', ['New::-new-', 'Open', list(i+'::-open-' for i in dbmaster.getDbs()), 'Close::-close-', 'Exit::-exit-']], ['Edit', ['Insert::-insert-', '!Update::-upt-', '!Delete::-del-']]], key='-themenu-')],
+        [sg.Menu([['File', ['New::-new-', 'Open', list(i+'::-open-' for i in dbmaster.getDbs()), 'Close::-close-', '---', 'Exit::-exit-']], ['Edit', ['Insert::-insert-', 'Update::-upt-', 'Delete::-del-', '---', 'Shrink::-shrink-']]], key='-themenu-')],
+        [sg.Text('Search', font=('Arial', 15)), sg.Input(key='-search-', font=('Arial', 15), enable_events=True)],
         [table],
         [sg.Push(),sg.Button(button_text='<', key='-ppage-', font=('Arial', 20)), sg.Button(button_text='>', key='-npage-', font=('Arial', 20)), sg.Push()]
     ])
@@ -49,9 +50,8 @@ def newWindow():
                 except: windowNew.Element(event).Update(values[event][:-1])
         elif '-submit_columns-' == event:
             windowNew.close()
-            filename = values['-dbname-']
-            fileName = values['-dbname-']
             spacefill = values['-spacefill-']
+            name = values['-dbname-']
             pklen = int(values['-pklen-'])
             columns = values['-columns-'].split(';')
             windowNew = sg.Window('DBMaster New Database', layout=[
@@ -75,6 +75,8 @@ def newWindow():
             windowNew.close()
             window.close()
             params = {}
+            filename = name
+            fileName = name
             for i in list(i for i in values if '_type-' in i):
                 params[i[1:i.find('_type-')]] = [values[i], int(values[i[:i.find('_type-')]+'_len-'])]  if values[i] not in ('date', 'time') else  [values[i]]
             try: dbmaster.open(filename, params, spacefill, pklen)
@@ -107,8 +109,8 @@ def insertWindow():
     global inswindow, window
     db = dbmaster.open(fileName)
     inswindow = sg.Window('Insert', layout=[
-        [sg.Text('Column', text_color='black', font=('Arial', 15)), sg.Push(), sg.Text('Value', text_color='black', font=('Arial', 15))],
-        ([sg.Text(text=col, font=('Arial', 15)), sg.Push(), sg.Input(key='-'+col+'_inscol-', font=('Arial', 15), enable_events=True, size=db.arrangement[col][1]+1)] for col in db.columns()),
+        [sg.Text('Column', text_color='black', font=('Arial', 15)), sg.Text('Type', text_color='dark gray', font=('Arial', 15)), sg.Push(), sg.Text('Value', text_color='black', font=('Arial', 15))],
+        ([sg.Text(text=col, font=('Arial', 15)), sg.Text(db.arrangement[col][0], text_color='dark gray', font=('Arial', 15)), sg.Push(), sg.Input(key='-'+col+'_inscol-', font=('Arial', 15), enable_events=True, size=db.arrangement[col][1]+1)] for col in db.columns()),
         [sg.Submit(key='-submit_insert-', disabled=True), sg.Cancel(key='-cancel-')]
     ])
     while True:
@@ -138,8 +140,9 @@ def insertWindow():
             for value in values:
                 toInsert[value[1:value.find('_inscol-')]] = values[value]
             inswindow.close()
-            return(toInsert)
+            return(toInsert, True)
     inswindow.close()
+    return (None, False)
 
 def updateWindow(entry):
     params = {}
@@ -147,8 +150,8 @@ def updateWindow(entry):
     global uptwindow, window, close
     db = dbmaster.open(fileName)
     uptwindow = sg.Window('Update', layout=[
-        [sg.Text('Column', text_color='black', font=('Arial', 15)), sg.Push(), sg.Text('Value', text_color='black', font=('Arial', 15))],
-        ([sg.Text(text=col, font=('Arial', 15)), sg.Push(), sg.Input(key='-'+col+'_uptcol-', font=('Arial', 15), enable_events=True, size=db.arrangement[col][1]+1, default_text=entry[list(db.arrangement).index(col)+1])] for col in db.columns()),
+        [sg.Text('Column', text_color='black', font=('Arial', 15)), sg.Text('Type', text_color='dark gray', font=('Arial', 15)), sg.Push(), sg.Text('Value', text_color='black', font=('Arial', 15))],
+        ([sg.Text(text=col, font=('Arial', 15)), sg.Text(db.arrangement[col][0], text_color='dark gray', font=('Arial', 15)), sg.Push(), sg.Push(), sg.Input(key='-'+col+'_uptcol-', font=('Arial', 15), enable_events=True, size=db.arrangement[col][1]+1, default_text=entry[list(db.arrangement).index(col)+1])] for col in db.columns()),
         [sg.Submit(key='-submit_update-', disabled=True), sg.Cancel(key='-cancel-')]
     ])
     while True:
@@ -182,9 +185,20 @@ def updateWindow(entry):
             return(params)
     uptwindow.close()
 
+def shrink():
+    w = sg.Window('Shrink', use_default_focus=False, layout=[
+            [sg.Text('Are you sure you want to SHRINK?', font=('Arial', 15))],
+            [sg.Text('Doing this will irreversibly delete clean the inactive entries', font=('Arial',12))],
+            [sg.Button('YES', font=('Arial', 12)), sg.Button('NO', font=('Arial', 12))]
+            ])
+    ev, vals = w.read()
+    w.close()
+    return ev
+
 emptyWindow()
 
 #mainloop()
+entry = None
 while True:
     event, values = window.read()
 
@@ -221,31 +235,45 @@ while True:
 
     # Insert
     elif '::-insert-' in event:
-        dbmaster.open(fileName).insert(insertWindow())
-        window.close()
-        contentWindow(fileName)
-    
-    # Update
-    elif '::-upt-' in event:
-        entry = table.Values[values['-table-'][0]]
-        pk = entry[0]
-        params = updateWindow(entry)
-        if close:
-            close = False
-            dbmaster.open(fileName).update(pk, params)
+        v = insertWindow()
+        if v[1] == True:
+            dbmaster.open(fileName).insert(v[0])
             window.close()
             contentWindow(fileName)
     
+    # Update
+    elif '::-upt-' in event:
+        if entry != None:
+            pk = entry[0]
+            params = updateWindow(entry)
+            if close:
+                close = False
+                dbmaster.open(fileName).update(pk, params)
+                window.close()
+                contentWindow(fileName)
+    
     # Selecting entry in table
-    elif '-table-' == event and not menuButtons:
-        window.Element('-themenu-').Update([['File', ['New::-new-', 'Open', list(i+'::-open-' for i in dbmaster.getDbs()), 'Close::-close-', 'Exit::-exit-']], ['Edit', ['Insert::-insert-', 'Update::-upt-', 'Delete::-del-']]])
-        menuButtons = True
+    elif '-table-' == event:
+        entry = table.Values[values['-table-'][0]]
 
     # Delete
     elif '::-del-' in event:
-        pk = table.Values[values['-table-'][0]][0]
-        dbmaster.open(fileName).delete(pk)
-        window.close()
-        contentWindow(fileName)
+        if entry != None:
+            pk = entry[0]
+            dbmaster.open(fileName).delete(pk)
+            window.close()
+            contentWindow(fileName)
 
+    # Shrink
+    elif '::-shrink-' in event: 
+        if shrink() == 'YES':
+            dbmaster.open(fileName).shrink()
+
+    # Search
+    elif '-search-' == event:
+        if len(values['-search-']) == 0:
+            table.update(dbmaster.open(fileName).get(0,pageSize))
+        else:
+            try:table.update(dbmaster.open(fileName).search({values[event][:values[event].find(':')]:values[event][values[event].find(':')+1:]}, pageSize))
+            except: pass
 window.close()

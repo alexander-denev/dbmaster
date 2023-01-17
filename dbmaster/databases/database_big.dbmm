@@ -1,0 +1,1 @@
+~8{'firstname': ['str', 20], 'lastname': ['str', 20], 'country': ['str', 30], 'number': ['int', 5], 'date': ['date', 10]}

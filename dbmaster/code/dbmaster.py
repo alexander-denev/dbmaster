@@ -1,6 +1,6 @@
 import io, os, ast, datetime
 from datetime import datetime
-os.chdir(os.path.dirname(os.path.dirname(__file__))) # Optional. Sets directory to be a folder one up
+os.chdir(os.path.dirname(os.path.dirname(__file__))+'\databases') # Optional. Sets directory to be in folder databases
 
 def getDbs() -> list: # Returns a list of all databases in the current directory
     Return = list(value[:value.find(".dbmd" if value.endswith(".dbmd") else ".dbmm" if value.endswith(".dbmm") else ".dbmt")] for value in os.listdir() if value.endswith(".dbmd") or value.endswith(".dbmm") or value.endswith(".dbmt"))
@@ -71,21 +71,21 @@ class open(object):
 
         for key in toInsert: # Arguments checks
             if key not in self.arrangement: raise Exception("Dbmaster: Column <" + key + "> is not a valid column in this database")
-            if len(toInsert[key]) > self.arrangement[key][1]: raise Exception("Dbmaster: Column <" + key + "> is bigger than the allocated space")
+            if len(str(toInsert[key])) > self.arrangement[key][1]: raise Exception("Dbmaster: Column <" + key + "> is bigger than the allocated space")
         write = ''
         for key in self.arrangement: # Converts insert dictionary argument into insertable string and inserts into database
             if key not in toInsert: toInsert[key] = ""
 
             try: # Column type check
-                if len(toInsert[key]) == 0: pass
-                elif self.arrangement[key][0] == "date": _ = datetime.strptime(toInsert[key], "%Y-%m-%d")
-                elif self.arrangement[key][0] == "time": _ = datetime.strptime(toInsert[key], "%H:%M:%S")
-                elif self.arrangement[key][0] == "int": int(toInsert[key])
-                elif self.arrangement[key][0] == "float": float(toInsert[key])
-                elif self.arrangement[key][0] == "str": str(toInsert[key])
+                if len(str(toInsert[key])) == 0: pass
+                elif self.arrangement[key][0] == "date": _ = datetime.strptime(str(toInsert[key]), "%Y-%m-%d")
+                elif self.arrangement[key][0] == "time": _ = datetime.strptime(str(toInsert[key]), "%H:%M:%S")
+                elif self.arrangement[key][0] == "int": int(str(toInsert[key]))
+                elif self.arrangement[key][0] == "float": float(str(toInsert[key]))
+                elif self.arrangement[key][0] == "str": str(str(toInsert[key]))
             except: raise Exception("Dbmaster: <" + key + "> is not a <" + self.arrangement[key][0] + ">")
 
-            write += toInsert[key] + ("".join(self.spaceFill for _ in range(self.arrangement[key][1]-len(toInsert[key]))))
+            write += str(toInsert[key]) + ("".join(self.spaceFill for _ in range(self.arrangement[key][1]-len(str(toInsert[key])))))
 
         self.fileData.seek(0,2)
         self.fileData.write("1" + str(self.PKReached) + ("".join(self.spaceFill for _ in range(self.primKeyLen-len(str(self.PKReached))))) + write)
@@ -93,7 +93,7 @@ class open(object):
         self.fileTrack.seek(0)
         self.fileTrack.write(str(self.PKReached))
 
-    def search(self, toSearch:dict) -> list: # Search in database
+    def search(self, toSearch:dict, length:int=100) -> list: # Search in database
         dict(toSearch)
         for key in toSearch: # Check if search argument/s are valid
             if key not in self.arrangement and key != "__primaryKey__":
@@ -123,6 +123,7 @@ class open(object):
             except:
                 continue
             found.append(entry)
+            if len(found) >= length:break
         
         result = []
         for i in found:
