@@ -1,1 +1,1 @@
-~8{'name': ['str', 20], 'familyname': ['str', 20], 'birthdate': ['date', 10]}
+~8{'name': ['str', 25], 'familyname': ['str', 25], 'company': ['str', 25], 'position': ['str', 35]}

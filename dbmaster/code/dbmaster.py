@@ -1,3 +1,9 @@
+# By Alexander Denev 
+
+
+
+
+
 import io, os, ast, datetime
 from datetime import datetime
 os.chdir(os.path.dirname(os.path.dirname(__file__))+'\databases') # Optional. Sets directory to be in folder databases
@@ -6,6 +12,17 @@ def getDbs() -> list: # Returns a list of all databases in the current directory
     Return = list(value[:value.find(".dbmd" if value.endswith(".dbmd") else ".dbmm" if value.endswith(".dbmm") else ".dbmt")] for value in os.listdir() if value.endswith(".dbmd") or value.endswith(".dbmm") or value.endswith(".dbmt"))
     Return = list(set(value for value in Return if Return.count(value) == 3))
     return Return   
+
+def delDb(fileName): # Delete a database
+    if os.path.exists(fileName + ".dbmd"): # If data file exists
+        if os.path.exists(fileName + ".dbmm"): # If meta file exists 
+            if os.path.exists(fileName + ".dbmt"): # If tracking file exists.
+                os.remove(fileName + ".dbmd")
+                os.remove(fileName + ".dbmm")
+                os.remove(fileName + ".dbmt")
+            else: raise Exception("Dbmaster: Tracking file with such name doesn't exit.")
+        else: raise Exception("Dbmaster: Meta file with such name doesn't exit.")
+    else: raise Exception("Dbmaster: Data file with such name doesn't exit.")
 
 class open(object):
         
@@ -263,4 +280,9 @@ class open(object):
         fileNew.close()
         os.remove(self.fileName + ".dbmd")
         os.rename("tempFileForDBMaster", self.fileName + ".dbmd")
-        io.open(self.fileName + ".dbmd", "r+", encoding='utf-8')
+        self.fileData = io.open(self.fileName + ".dbmd", "r+", encoding='utf-8')
+        self.numOfEntries = os.stat(self.fileName + ".dbmd").st_size / self.entryLength
+        self.PKReached = ((self.numOfEntries + 1) if self.numOfEntries != 0 else 0)
+        self.fileTrack.seek(0)
+        self.fileTrack.truncate()
+        self.fileTrack.write(str(self.PKReached))

@@ -1,3 +1,9 @@
+# By Alexander Denev 
+
+
+
+
+
 import PySimpleGUI_forDBMaster as sg
 import dbmaster
 from datetime import datetime
@@ -9,18 +15,20 @@ close = False
 def emptyWindow(Size = (300, 200)):
     global window
     window = sg.Window('DBMaster', size=Size, layout=[
-        [sg.Menu([['File', ['New::-new-', 'Open', list(i+'::-open-' for i in dbmaster.getDbs()), '!Close::-close-', '---', 'Exit::-exit-']], ['!Edit', ['Insert::-insert-']]])]
+        [sg.Menu([['File', ['New::-new-', 'Open', list(i+'::-open-' for i in dbmaster.getDbs()), '!Close::-close-', '---', 'Delete', list(i+'::-fdelete-' for i in dbmaster.getDbs()), '---', 'Exit::-exit-']], ['!Edit', ['Insert::-insert-']], ['!Help']])]
     ])
 
 def contentWindow(fileName):
     global window, table, menuButtons
     menuButtons = False
     db = dbmaster.open(fileName)
-    try: Values = db.get(0,pageSize)
-    except: Values = [list(['null'] for _ in range(len(db.columns())+1))]
+    try: 
+        Values = db.get(0,pageSize)
+        if Values == []: raise Exception
+    except: Values = [list('null' for _ in range(len(db.columns())+1))]
     table = sg.Table(headings=['PK'] + db.columns(), values=Values, auto_size_columns=False, col_widths=[len(str(Values[len(Values)-1][0]))+1]+list(max(db.arrangement[i][1]+1, len(i)) for i in db.arrangement), num_rows=30, hide_vertical_scroll=True, font=('Arial', 14), justification='center', enable_events=True, key='-table-')
     window = sg.Window('DBMaster: '+db.fileName, use_default_focus = False, layout=[
-        [sg.Menu([['File', ['New::-new-', 'Open', list(i+'::-open-' for i in dbmaster.getDbs()), 'Close::-close-', '---', 'Exit::-exit-']], ['Edit', ['Insert::-insert-', 'Update::-upt-', 'Delete::-del-', '---', 'Shrink::-shrink-']]], key='-themenu-')],
+        [sg.Menu([['File', ['New::-new-', 'Open', list(i+'::-open-' for i in dbmaster.getDbs()), 'Close::-close-', '---', 'Delete', list(i+'::-fdelete-' for i in dbmaster.getDbs()), '---', 'Exit::-exit-']], ['Edit', ['Insert::-insert-', 'Update::-upt-', '---', 'Delete::-del-', '---', 'Shrink::-shrink-']], ['Help', ['Search like this (without the quotes): "column:value"', 'Column "__primaryKey__" is for searching by primary key']]], key='-themenu-')],
         [sg.Text('Search', font=('Arial', 15)), sg.Input(key='-search-', font=('Arial', 15), enable_events=True)],
         [table],
         [sg.Push(),sg.Button(button_text='<', key='-ppage-', font=('Arial', 20)), sg.Button(button_text='>', key='-npage-', font=('Arial', 20)), sg.Push()]
@@ -60,7 +68,7 @@ def newWindow():
                 [sg.Submit(key='-submit_new-', disabled=True), sg.Cancel(key='-cancel-')]
             ])
         elif '-cancel-' == event or sg.WIN_CLOSED == event:
-            break
+            return 'closed'
         elif '_type-' in event:
             if values[event] in ('date', 'time'):
                 windowNew.Element(event[:event.find('_type-')]+'_len-').Update((10 if values[event] == 'date' else 8), disabled=True)
@@ -72,32 +80,36 @@ def newWindow():
             try: int(values[event])
             except: windowNew.Element(event).Update(values[event][:-1])
         elif '-submit_new-' == event:
-            windowNew.close()
-            window.close()
             params = {}
-            filename = name
-            fileName = name
             for i in list(i for i in values if '_type-' in i):
                 params[i[1:i.find('_type-')]] = [values[i], int(values[i[:i.find('_type-')]+'_len-'])]  if values[i] not in ('date', 'time') else  [values[i]]
-            try: dbmaster.open(filename, params, spacefill, pklen)
+            try: 
+                dbmaster.open(name, params, spacefill, pklen)
+                fileName = name
+                window.close()
+                break
             except:
                 try:
                     while True:
-                        w = sg.Window('FIle Name Taken', layout=[[sg.Text('File name is taken, enter a different name:')], [sg.Input(key='-dbname-', enable_events=True)], [sg.Submit(key='-submit-'), sg.Cancel(key='-cancel-')]])
+                        w = sg.Window('FIle Name Taken', layout=[[sg.Text('File name is taken, enter a different name:')], [sg.Input(key='-dbname-', enable_events=True)], [sg.Submit(key='-submit-', disabled=True), sg.Cancel(key='-cancel-')]])
                         while True:
                             event, values = w.read()
-                            if event in (sg.WIN_CLOSED, '-cancel-'): windowNew.close(); w.close(); raise Exception
+                            if event in (sg.WIN_CLOSED, '-cancel-'): w.close(); raise Exception
                             elif event == '-dbname-': 
-                                if values[event] != '': w.Element('-submit-').Update(disabled=False)
+                                if values[event] == '': w.Element('-submit-').Update(disabled=True)
                                 else: w.Element('-submit-').Update(disabled=False)
                             elif event == '-submit-':
-                                filename = values['-dbname-']
+                                name = values['-dbname-']
                                 break
                         w.close()
-                        try: dbmaster.open(filename, params, spacefill, pklen)
+                        try: 
+                            dbmaster.open(name, params, spacefill, pklen)
+                            fileName = name
+                            window.close()
+                            break
                         except: continue
-                except: pass
-            contentWindow(filename)
+                    break
+                except: break
         if '_len-' in event or '_type-' in event:
             if all(value!='' for value in values.values()) and all(value in ('int', 'str', 'float', 'date', 'time') for value in list(values[i] for i in values if '_type-' in i)):
                 windowNew.Element('-submit_new-').Update(disabled=False)
@@ -195,6 +207,16 @@ def shrink():
     w.close()
     return ev
 
+def dbdel(fileName):
+    w = sg.Window('Database deletion', use_default_focus=False, layout=[
+            [sg.Text('Are you sure you want to DELETE database <'+fileName+'>?', font=('Arial', 15))],
+            [sg.Text('This action is irreversible', font=('Arial',12))],
+            [sg.Button('YES', font=('Arial', 12)), sg.Button('NO', font=('Arial', 12))]
+            ])
+    ev, vals = w.read()
+    w.close()
+    return ev
+
 emptyWindow()
 
 #mainloop()
@@ -207,7 +229,8 @@ while True:
 
     # New
     elif '::-new-' in event:
-        newWindow()
+        if newWindow() != 'closed':
+            contentWindow(fileName)
 
     # Open
     elif '::-open-' in event:
@@ -243,7 +266,7 @@ while True:
     
     # Update
     elif '::-upt-' in event:
-        if entry != None:
+        if entry != None and entry[0] != 'null':
             pk = entry[0]
             params = updateWindow(entry)
             if close:
@@ -258,7 +281,7 @@ while True:
 
     # Delete
     elif '::-del-' in event:
-        if entry != None:
+        if entry != None and entry[0] != 'null':
             pk = entry[0]
             dbmaster.open(fileName).delete(pk)
             window.close()
@@ -276,4 +299,13 @@ while True:
         else:
             try:table.update(dbmaster.open(fileName).search({values[event][:values[event].find(':')]:values[event][values[event].find(':')+1:]}, pageSize))
             except: pass
+
+    # File delete
+    elif '::-fdelete-' in event:
+        if dbdel(event[:event.find('::-fdelete-')]) == 'YES':
+            dbmaster.delDb(event[:event.find('::-fdelete-')])
+            Size = window.Size
+            window.close()
+            emptyWindow(Size)
 window.close()
+exit()
