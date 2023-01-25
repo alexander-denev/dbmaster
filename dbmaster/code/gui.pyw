@@ -73,8 +73,8 @@ def newWindow():
             return 'closed'
         elif '_type-' in event:
             if values[event] in ('date', 'time'):
-                windowNew.Element(event[:event.find('_type-')]+'_len-').Update((10 if values[event] == 'date' else 8), disabled=True)
-                values[event[:event.find('_type-')]+'_len-'] = (10 if values[event] == 'date' else 8)
+                windowNew.Element(event[:event.find('_type-')]+'_len-').Update(('10' if values[event] == 'date' else '8'), disabled=True)
+                values[event[:event.find('_type-')]+'_len-'] = ('10' if values[event] == 'date' else '8')
             else:
                 windowNew.Element(event[:event.find('_type-')]+'_len-').Update('', disabled=False)
                 values[event[:event.find('_type-')]+'_len-'] = ''
@@ -83,7 +83,7 @@ def newWindow():
             except: windowNew.Element(event).Update(values[event][:-1])
         elif '-submit_new-' == event:
             params = {}
-            for i in list(i for i in values if '_type-' in i):
+            for i in list(i for i in values if ('_type-' in str(i))):
                 params[i[1:i.find('_type-')]] = [values[i], int(values[i[:i.find('_type-')]+'_len-'])]  if values[i] not in ('date', 'time') else  [values[i]]
             try: 
                 dbmaster.open(name, params, spacefill, pklen)
@@ -113,7 +113,7 @@ def newWindow():
                     break
                 except: break
         if '_len-' in event or '_type-' in event:
-            if all(value!='' for value in values.values()) and all(value in ('int', 'str', 'float', 'date', 'time') for value in list(values[i] for i in values if '_type-' in i)):
+            if all(value!='' for value in values.values()) and all((value in ('int', 'str', 'float', 'date', 'time')) for value in (list(values[i] for i in values if ('_type-' in str(i))))):
                 windowNew.Element('-submit_new-').Update(disabled=False)
             else:
                 windowNew.Element('-submit_new-').Update(disabled=True)
