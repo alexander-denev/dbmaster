@@ -6,7 +6,10 @@
 
 import io, os, ast, datetime
 from datetime import datetime
-os.chdir(os.path.dirname(os.path.dirname(__file__))+'\databases') # Optional. Sets directory to be in folder databases
+
+# Sets directory to be in folder databases
+try: os.chdir(os.path.dirname(os.path.dirname(__file__))+'\databases') # Windows
+except: os.chdir(os.path.dirname(os.path.dirname(__file__))+'/databases') # Linux
 
 def getDbs() -> list: # Returns a list of all databases in the current directory
     Return = list(value[:value.find(".dbmd" if value.endswith(".dbmd") else ".dbmm" if value.endswith(".dbmm") else ".dbmt")] for value in os.listdir() if value.endswith(".dbmd") or value.endswith(".dbmm") or value.endswith(".dbmt"))

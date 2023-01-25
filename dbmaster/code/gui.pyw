@@ -63,11 +63,13 @@ def newWindow():
             pklen = int(values['-pklen-'])
             columns = values['-columns-'].split(';')
             windowNew = sg.Window('DBMaster New Database', layout=[
+                [sg.Menu([['Help', ['Types are: str, int, float, date, time']]])],
                 [sg.Push(), sg.Text('Column', text_color='black', font=('Arial', 15), pad=(30,0)), sg.Text('Type', text_color='black', font=('Arial', 15), pad=(30,0)), sg.Text('Length', text_color='black', font=('Arial', 15), pad=(30,0))],
                 ([sg.Push(), sg.Text(text=i, font=('Arial', 15)), sg.Input(key='-'+i+'_type-', font=('Arial', 15), enable_events=True, size=10), sg.Input(key='-'+i+'_len-', font=('Arial', 15), enable_events=True, disabled_readonly_background_color = 'dark gray', size=10)] for i in columns),
                 [sg.Submit(key='-submit_new-', disabled=True), sg.Cancel(key='-cancel-')]
             ])
         elif '-cancel-' == event or sg.WIN_CLOSED == event:
+            windowNew.close()
             return 'closed'
         elif '_type-' in event:
             if values[event] in ('date', 'time'):
@@ -308,4 +310,4 @@ while True:
             window.close()
             emptyWindow(Size)
 window.close()
-exit()
+quit()
